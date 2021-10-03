@@ -10,15 +10,22 @@ public Plugin myinfo = {
     name        = "Audible Breathing",
     author      = "Dysphie",
     description = "Makes breathing sounds audible to others",
-    version     = "0.1.0",
+    version     = "0.1.1",
     url         = ""
 };
 
 #define MAXPLAYERS_NMRIH 9
 #define OBS_MODE_IN_EYE 4
 
+#define SNDLEVEL_FIRSTPERSON SNDLEVEL_NORMAL 
+#define SNDLEVEL_THIRDPERSON SNDLEVEL_CONVO   
+
 #define SND_LIGHT_BREATH "player/stamina/female/light_breath.wav"
+
 #define LB_FEMALE "player/stamina/female/light_breath.wav"
+#define LB_PUGMAN "player/stamina/pugman/light_breath.wav"
+#define LB_MALE "player/stamina/light_breath.wav"
+#define MB_MALE "player/stamina/medium_breath1.wav"
 			
 char MB_FEMALE[][] = {
 	"player/stamina/female/medium_breath1.wav",
@@ -30,7 +37,6 @@ char HB_FEMALE[][] = {
 	"player/stamina/female/heavy_breath3.wav"
 }
 
-#define LB_PUGMAN "player/stamina/pugman/light_breath.wav"
 char MB_PUGMAN[][] = {
 	"player/stamina/pugman/medium_breath1.wav",
 	"player/stamina/pugman/medium_breath2.wav"
@@ -41,8 +47,6 @@ char HB_PUGMAN[][] = {
 	"player/stamina/pugman/heavy_breath3.wav"
 }			
 
-#define LB_MALE "player/stamina/light_breath.wav"
-#define MB_MALE "player/stamina/medium_breath1.wav"
 char HB_MALE[][] = {
 	"player/stamina/heavy_breath1.wav",
 	"player/stamina/heavy_breath2.wav",
@@ -74,15 +78,15 @@ ConVar hb_breath_looptime;
 ConVar sm_audible_breath_firstperson;
 ConVar sm_audible_breath_thirdperson;
 
-bool initedSounds[MAXPLAYERS_NMRIH+1];
+bool initedSounds[MAXPLAYERS_NMRIH+1] = {false, ...};
 int voiceID[MAXPLAYERS_NMRIH+1] = {Voice_Male, ...};
 float nextBreathTime[MAXPLAYERS_NMRIH+1] = {-1.0, ...};
+float nextBeatSound[MAXPLAYERS+1] = {-1.0, ...};
+int beatOut[MAXPLAYERS+1] = {false, ...};
 
 ConVar hb_beat_endlooptime, hb_beat_baselooptime, hb_beat_endpulsetime, hb_beat_basepulsetime;
 ConVar sm_audible_hb_firstperson;
 
-float nextBeatSound[MAXPLAYERS+1];
-int lastBeatSound[MAXPLAYERS+1];
 
 #define BEAT_IN 0
 #define BEAT_OUT 1
@@ -94,16 +98,14 @@ char HB_SND[][] = {
 
 public void OnPluginStart()
 {
+	sm_audible_breath_firstperson = CreateConVar("sm_audible_breath_firstperson", "1");
+	sm_audible_breath_thirdperson = CreateConVar("sm_audible_breath_thirdperson", "1");
+	sm_audible_hb_firstperson = CreateConVar("sm_audible_hb_firstperson", "1");
+
 	hb_heavy_threshold = FindConVar("hb_heavy_threshold");
 	hb_medium_threshold = FindConVar("hb_medium_threshold");
 	hb_light_threshold = FindConVar("hb_light_threshold");
 	hb_breath_looptime = FindConVar("hb_breath_looptime");
-
-	sm_audible_breath_firstperson = CreateConVar("sm_audible_breath_firstperson", "1");
-	sm_audible_breath_thirdperson = CreateConVar("sm_audible_breath_thirdperson", "1");
-
-	sm_audible_hb_firstperson = CreateConVar("sm_audible_hb_firstperson", "1");
-
 	hb_beat_endlooptime = FindConVar("hb_beat_endlooptime");
 	hb_beat_baselooptime = FindConVar("hb_beat_baselooptime");
 	hb_beat_endpulsetime = FindConVar("hb_beat_endpulsetime");
@@ -111,7 +113,7 @@ public void OnPluginStart()
 	hb_light_threshold = FindConVar("hb_light_threshold");
 
 	AutoExecConfig(true, "plugin.audible-breathing");
-	
+
 	for (int i = 1; i <= MaxClients; i++)
 		if (IsClientInGame(i))
 			OnClientPutInServer(i);
@@ -126,6 +128,10 @@ public void OnClientPutInServer(int client)
 {
 	initedSounds[client] = false;
 	voiceID[client] = Voice_Male;
+	nextBeatSound[client] = -1.0;
+	nextBreathTime[client] = -1.0;
+	beatOut[client] = false;
+
 	QueryClientConVar(client, "cl_voice_set", OnClVoiceSetReceived);
 
 	SDKHook(client, SDKHook_PreThink, OnPlayerPreThink);
@@ -189,32 +195,29 @@ void UpdateBeatSound(int client)
 	if (stamina > hb_light_threshold.FloatValue)
 		return;
 
-	if ( GetGameTime() >= nextBeatSound[client] )
+	if ( GetTickedTime() >= nextBeatSound[client] )
 	{
 		float end, base;
 
 		float v6 = min(max(stamina / hb_light_threshold.FloatValue, 0.0), 1.0);
-		if (lastBeatSound[client] == BEAT_IN)
+		if (!beatOut[client])
 		{
-			lastBeatSound[client] = BEAT_OUT;
+			beatOut[client] = true;
 			end = hb_beat_endlooptime.FloatValue;
 			base = hb_beat_baselooptime.FloatValue;
 		}
 		else
 		{
-			lastBeatSound[client] = BEAT_IN;
+			beatOut[client] = false;
 			end = hb_beat_endpulsetime.FloatValue;
 			base = hb_beat_basepulsetime.FloatValue;
 		}
 
 		float vol = 1.0 - (v6 * v6);
-		nextBeatSound[client] = GetGameTime() + (((base - end) * v6) + end);
-		EmitBeatSound(client, lastBeatSound[client], vol);
+		nextBeatSound[client] = GetTickedTime() + (((base - end) * v6) + end);
+		EmitBeatSound(client, beatOut[client], vol);
 	}
 }
-
-#define SNDLEVEL_FIRSTPERSON SNDLEVEL_NORMAL 
-#define SNDLEVEL_THIRDPERSON SNDLEVEL_CONVO   
 
 void EmitBeatSound(int client, int beatType, float vol)
 {	
