@@ -2,7 +2,6 @@
 Makes breathing sounds audible to teammates. Spectators can also hear heartbeat sounds.
 
 ## Installation
-- (Optional) Upgrade to Sourcemod 1.11.0.6506 or higher. This will enable some extra features.
 - Grab the latest zip from the [releases](https://github.com/dysphie/nmrih-audible-breathing/releases) section.
 - Extract the contents into `addons/sourcemod`
 - Load the plugin (`sm plugins load nmrih-audible-breathing` in server console)
