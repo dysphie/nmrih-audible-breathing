@@ -1,5 +1,5 @@
 # [NMRiH] Audible Breathing
-Makes breathing sounds audible to nearby teammates and spectators
+Makes breathing sounds audible to teammates. Spectators can also hear heartbeat sounds.
 
 ## Installation
 - (Optional) Upgrade to Sourcemod 1.11.0.6506 or higher. This will enable some extra features.
