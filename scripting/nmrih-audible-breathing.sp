@@ -110,6 +110,8 @@ public void OnPluginStart()
 	hb_beat_basepulsetime = FindConVar("hb_beat_basepulsetime");
 	hb_light_threshold = FindConVar("hb_light_threshold");
 
+	AutoExecConfig(true, "plugin.audible-breathing");
+	
 	for (int i = 1; i <= MaxClients; i++)
 		if (IsClientInGame(i))
 			OnClientPutInServer(i);
