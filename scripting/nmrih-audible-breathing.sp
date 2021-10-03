@@ -10,7 +10,7 @@ public Plugin myinfo = {
     name        = "Audible Breathing",
     author      = "Dysphie",
     description = "Makes breathing sounds audible to others",
-    version     = "0.1.1",
+    version     = "0.2.1",
     url         = ""
 };
 
@@ -98,19 +98,38 @@ char HB_SND[][] = {
 
 public void OnPluginStart()
 {
-	sm_audible_breath_firstperson = CreateConVar("sm_audible_breath_firstperson", "1");
-	sm_audible_breath_thirdperson = CreateConVar("sm_audible_breath_thirdperson", "1");
-	sm_audible_hb_firstperson = CreateConVar("sm_audible_hb_firstperson", "1");
+	sm_audible_breath_firstperson = CreateConVar("sm_audible_breath_firstperson", "1",
+		"Whether to play breathing sounds to first-person spectators");
 
-	hb_heavy_threshold = FindConVar("hb_heavy_threshold");
-	hb_medium_threshold = FindConVar("hb_medium_threshold");
-	hb_light_threshold = FindConVar("hb_light_threshold");
-	hb_breath_looptime = FindConVar("hb_breath_looptime");
-	hb_beat_endlooptime = FindConVar("hb_beat_endlooptime");
-	hb_beat_baselooptime = FindConVar("hb_beat_baselooptime");
-	hb_beat_endpulsetime = FindConVar("hb_beat_endpulsetime");
-	hb_beat_basepulsetime = FindConVar("hb_beat_basepulsetime");
-	hb_light_threshold = FindConVar("hb_light_threshold");
+	sm_audible_breath_thirdperson = CreateConVar("sm_audible_breath_thirdperson", "1",
+		"Whether to play breathing sounds to nearby teammates and third-person spectators");
+
+	sm_audible_hb_firstperson = CreateConVar("sm_audible_hb_firstperson", "1",
+		"Whether to play heartbeat sounds to first-person spectators");
+
+	hb_heavy_threshold = CreateConVar("sm_audible_heavy_threshold", "40", 
+		"Threshold of stamina to play heavy breathing sound");
+
+	hb_medium_threshold = CreateConVar("sm_audible_medium_threshold", "60", 
+		"Threshold of stamina to play medium breathing sound.");
+
+	hb_light_threshold = CreateConVar("sm_audible_light_threshold", "80", 
+		"Threshold of stamina to play light breathing sound.");
+
+	hb_breath_looptime = CreateConVar("sm_audible_breath_looptime", "2.5",
+		"Time in seconds between breath start times");
+
+	hb_beat_endlooptime = CreateConVar("sm_audible_beat_endlooptime", "0.5", 
+		"Time in seconds between heartbeats (ending point)");
+
+	hb_beat_baselooptime = CreateConVar("sm_audible_beat_baselooptime", "1.0",
+		"Time in seconds between heartbeats (baseline)");
+
+	hb_beat_endpulsetime = CreateConVar("sm_audible_beat_endpulsetime", "0.25",
+		"Time in seconds between in and out pulses (ending point)");
+
+	hb_beat_basepulsetime = CreateConVar("sm_audible_beat_basepulsetime", "0.6",
+		"Time in seconds between in and out pulses (baseline)");
 
 	AutoExecConfig(true, "plugin.audible-breathing");
 
