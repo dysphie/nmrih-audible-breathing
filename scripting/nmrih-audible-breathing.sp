@@ -10,7 +10,7 @@ public Plugin myinfo = {
     name        = "Audible Breathing",
     author      = "Dysphie",
     description = "Makes breathing sounds audible to others",
-    version     = "0.2.1",
+    version     = "0.2.2",
     url         = ""
 };
 
@@ -53,12 +53,12 @@ char HB_MALE[][] = {
 	"player/stamina/heavy_breath3.wav"
 }
 
-enum eVoiceID 
+enum eVoiceID:
 {
+	Voice_Querying = -1,
 	Voice_Male,
 	Voice_Female,
-	Voice_Pugman,
-	Voice_MAX
+	Voice_Pugman
 }
 
 enum eBreathing
@@ -78,8 +78,7 @@ ConVar hb_breath_looptime;
 ConVar sm_audible_breath_firstperson;
 ConVar sm_audible_breath_thirdperson;
 
-bool initedSounds[MAXPLAYERS_NMRIH+1] = {false, ...};
-int voiceID[MAXPLAYERS_NMRIH+1] = {Voice_Male, ...};
+eVoiceID voiceID[MAXPLAYERS_NMRIH+1] = {Voice_Querying, ...};
 float nextBreathTime[MAXPLAYERS_NMRIH+1] = {-1.0, ...};
 float nextBeatSound[MAXPLAYERS+1] = {-1.0, ...};
 int beatOut[MAXPLAYERS+1] = {false, ...};
@@ -87,9 +86,7 @@ int beatOut[MAXPLAYERS+1] = {false, ...};
 ConVar hb_beat_endlooptime, hb_beat_baselooptime, hb_beat_endpulsetime, hb_beat_basepulsetime;
 ConVar sm_audible_hb_firstperson;
 
-
-#define BEAT_IN 0
-#define BEAT_OUT 1
+ArrayList femaleModels;
 
 char HB_SND[][] = {
 	"player/stamina/heartbeat_in.wav",
@@ -98,6 +95,9 @@ char HB_SND[][] = {
 
 public void OnPluginStart()
 {
+	femaleModels = new ArrayList(ByteCountToCells(PLATFORM_MAX_PATH));
+	CacheModelManifest();
+
 	sm_audible_breath_firstperson = CreateConVar("sm_audible_breath_firstperson", "1",
 		"Whether to play breathing sounds to first-person spectators");
 
@@ -136,6 +136,16 @@ public void OnPluginStart()
 	for (int i = 1; i <= MaxClients; i++)
 		if (IsClientInGame(i))
 			OnClientPutInServer(i);
+
+	RegAdminCmd("sm_reload_model_manifest", Cmd_ReloadMdlManifest, ADMFLAG_ROOT);
+}
+
+Action Cmd_ReloadMdlManifest(int client, int args)
+{
+	femaleModels.Clear();
+	CacheModelManifest();
+	ReplyToCommand(client, "Reloaded model manifest");
+	return Plugin_Handled;
 }
 
 public void OnMapStart()
@@ -143,30 +153,82 @@ public void OnMapStart()
 	PrecacheSounds();
 }
 
+void CacheModelManifest()
+{
+	KeyValues kv = new KeyValues("PlayerModels");
+	kv.ImportFromFile("scripts/player_model_manifest.txt");
+
+	if (kv.GotoFirstSubKey())
+	{
+		do 
+		{
+			char gender[2];
+			kv.GetString("gender", gender, sizeof(gender));
+
+			if (gender[0] == 'f')
+			{
+				char mdl[PLATFORM_MAX_PATH];
+				kv.GetString("model", mdl, sizeof(mdl));
+				femaleModels.PushString(mdl);
+				PrintToServer("Added %s to 'f'", mdl);
+			}
+		} while (kv.GotoNextKey());
+	}
+
+	delete kv;
+}
+
 public void OnClientPutInServer(int client)
 {
-	initedSounds[client] = false;
-	voiceID[client] = Voice_Male;
+	voiceID[client] = Voice_Querying;
 	nextBeatSound[client] = -1.0;
 	nextBreathTime[client] = -1.0;
 	beatOut[client] = false;
 
-	QueryClientConVar(client, "cl_voice_set", OnClVoiceSetReceived);
+	// Let the server select a model for this player
+	char cl_voice_set[32];
+	GetClientInfo(client, "cl_voice_set", cl_voice_set, sizeof(cl_voice_set));
+
+	DataPack data = new DataPack();
+	data.WriteCell(GetClientSerial(client));
+	data.WriteString(cl_voice_set);
+	RequestFrame(PickVoiceID, data);
 
 	SDKHook(client, SDKHook_PreThink, OnPlayerPreThink);
 }
 
-void OnClVoiceSetReceived(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue)
+void PickVoiceID(DataPack data)
 {
-	if (cookie == QUERYCOOKIE_FAILED || result != ConVarQuery_Okay)
-		return;
+	data.Reset();
+	int serial = data.ReadCell();
+	int client = GetClientFromSerial(serial);
 
-	if (StrEqual(cvarValue, "FemaleDefault", false))
+	if (!client) 
+	{
+		delete data;
+		return;
+	}
+
+	char cl_voice_set[32];
+	data.ReadString(cl_voice_set, sizeof(cl_voice_set));
+
+	char mdl[PLATFORM_MAX_PATH];
+	GetClientModel(client, mdl, sizeof(mdl));
+
+	if (femaleModels.FindString(mdl) == -1)
+	{
+		if (StrEqual(cl_voice_set, "Alt7", false))
+			voiceID[client] = Voice_Pugman;
+		else
+			voiceID[client] = Voice_Male;
+	}
+	else
+	{
 		voiceID[client] = Voice_Female;
-	else if (StrEqual(cvarValue, "Alt7", false))
-		voiceID[client] = Voice_Pugman;
+	}
 
 	InitBreathingSounds(client);
+	delete data;
 }
 
 void OnPlayerPreThink(int client)
@@ -257,7 +319,7 @@ void EmitBeatSound(int client, int beatType, float vol)
 
 void EmitBreathSound(int client, int breathType)
 {
-	if (!initedSounds[client])
+	if (voiceID[client] == Voice_Querying)
 		return;
 	
 	for (int i = 1; i <= MaxClients; i++)
@@ -308,8 +370,8 @@ void PrecacheSounds()
 	PrecacheSound(LB_MALE);
 	PrecacheSound(LB_PUGMAN);
 
-	PrecacheSound(HB_SND[BEAT_IN]);
-	PrecacheSound(HB_SND[BEAT_OUT]);
+	for (int i; i < sizeof(HB_SND); i++)
+		PrecacheSound(HB_SND[i]);
 }
 
 void InitBreathingSounds(int client)
@@ -345,9 +407,14 @@ void InitBreathingSounds(int client)
 			strcopy(breathSfx[client][Breathing_Heavy], sizeof(breathSfx[][]), HB_MALE[rnd]);
 		}
 	}
-
-	initedSounds[client] = true;
 }
 
-any min(any a, any b) { return (a < b) ? a : b; }
-any max(any a, any b) { return (a > b) ? a : b; }
+any min(any a, any b) 
+{ 
+	return (a < b) ? a : b; 
+}
+
+any max(any a, any b) 
+{ 
+	return (a > b) ? a : b; 
+}
