@@ -88,10 +88,11 @@ ConVar sm_audible_hb_firstperson;
 
 ArrayList femaleModels;
 
-char HB_SND[][] = {
+char HB_SND[][] = 
+{
 	"player/stamina/heartbeat_in.wav",
 	"player/stamina/heartbeat_out.wav"
-} 
+}
 
 public void OnPluginStart()
 {
@@ -136,16 +137,6 @@ public void OnPluginStart()
 	for (int i = 1; i <= MaxClients; i++)
 		if (IsClientInGame(i))
 			OnClientPutInServer(i);
-
-	RegAdminCmd("sm_reload_model_manifest", Cmd_ReloadMdlManifest, ADMFLAG_ROOT);
-}
-
-Action Cmd_ReloadMdlManifest(int client, int args)
-{
-	femaleModels.Clear();
-	CacheModelManifest();
-	ReplyToCommand(client, "Reloaded model manifest");
-	return Plugin_Handled;
 }
 
 public void OnMapStart()
@@ -170,7 +161,6 @@ void CacheModelManifest()
 				char mdl[PLATFORM_MAX_PATH];
 				kv.GetString("model", mdl, sizeof(mdl));
 				femaleModels.PushString(mdl);
-				PrintToServer("Added %s to 'f'", mdl);
 			}
 		} while (kv.GotoNextKey());
 	}
@@ -227,8 +217,8 @@ void PickVoiceID(DataPack data)
 		voiceID[client] = Voice_Female;
 	}
 
-	InitBreathingSounds(client);
 	delete data;
+	InitBreathingSounds(client);
 }
 
 void OnPlayerPreThink(int client)
