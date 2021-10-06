@@ -10,7 +10,7 @@ public Plugin myinfo = {
     name        = "Audible Breathing",
     author      = "Dysphie",
     description = "Makes breathing sounds audible to others",
-    version     = "0.2.2",
+    version     = "0.2.3",
     url         = ""
 };
 
@@ -53,7 +53,7 @@ char HB_MALE[][] = {
 	"player/stamina/heavy_breath3.wav"
 }
 
-enum eVoiceID:
+enum eVoiceID
 {
 	Voice_Querying = -1,
 	Voice_Male,
@@ -358,7 +358,7 @@ void PrecacheSounds()
 	PrecacheSound(LB_FEMALE);
 	PrecacheSound(LB_PUGMAN);
 	PrecacheSound(LB_MALE);
-	PrecacheSound(LB_PUGMAN);
+	PrecacheSound(MB_MALE);
 
 	for (int i; i < sizeof(HB_SND); i++)
 		PrecacheSound(HB_SND[i]);
