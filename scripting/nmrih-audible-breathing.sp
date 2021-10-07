@@ -10,7 +10,7 @@ public Plugin myinfo = {
     name        = "Audible Breathing",
     author      = "Dysphie",
     description = "Makes breathing sounds audible to others",
-    version     = "0.2.3",
+    version     = "0.2.4",
     url         = ""
 };
 
@@ -392,7 +392,7 @@ void InitBreathingSounds(int client)
 		case Voice_Male:
 		{
 			strcopy(breathSfx[client][Breathing_Light], sizeof(breathSfx[][]), LB_MALE);
-			strcopy(breathSfx[client][Breathing_Light], sizeof(breathSfx[][]), MB_MALE);
+			strcopy(breathSfx[client][Breathing_Medium], sizeof(breathSfx[][]), MB_MALE);
 			int rnd = GetRandomInt(0, sizeof(HB_MALE)-1);
 			strcopy(breathSfx[client][Breathing_Heavy], sizeof(breathSfx[][]), HB_MALE[rnd]);
 		}
